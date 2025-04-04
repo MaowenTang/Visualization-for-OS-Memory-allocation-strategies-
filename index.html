@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Allocation Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --ghibli-blue: #7BA7AB;
+            --ghibli-green: #B5C7B7;
+            --ghibli-yellow: #F5E6CA;
+            --ghibli-brown: #8B7355;
+            --ghibli-red: #E6A4A4;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Quicksand', sans-serif;
+        }
+
+        body {
+            background-color: var(--ghibli-yellow);
+            color: var(--ghibli-brown);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background-color: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            color: var(--ghibli-blue);
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .header p {
+            color: var(--ghibli-brown);
+            font-size: 1.1rem;
+        }
+
+        .strategy-selection {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .strategy-card {
+            background-color: var(--ghibli-green);
+            padding: 1.5rem;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            text-align: center;
+        }
+
+        .strategy-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .strategy-card.selected {
+            background-color: var(--ghibli-blue);
+            color: white;
+        }
+
+        .memory-visualization {
+            background-color: var(--ghibli-yellow);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .memory-blocks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 1rem;
+            background-color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            min-height: 100px;
+        }
+
+        .memory-block {
+            height: 40px;
+            width: 80px;
+            flex: 0 0 80px;
+            background-color: var(--ghibli-green);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+            transition: all 0.3s ease;
+            margin-bottom: 4px;
+        }
+
+        .memory-block span {
+            padding: 0 4px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+        }
+
+        .memory-block.allocated {
+            background-color: var(--ghibli-blue);
+        }
+
+        .memory-block.free {
+            background-color: var(--ghibli-green);
+        }
+
+        .memory-block:hover {
+            transform: scale(1.05);
+            z-index: 1;
+        }
+
+        .memory-block .block-info {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--ghibli-brown);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 2;
+        }
+
+        .memory-block:hover .block-info {
+            opacity: 1;
+        }
+
+        .legend {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .educational-tip {
+            background-color: var(--ghibli-green);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .educational-tip.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .process-queue {
+            background-color: var(--ghibli-yellow);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .process-item {
+            background-color: var(--ghibli-red);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .process-info {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .process-size {
+            font-weight: bold;
+        }
+
+        .process-status {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background-color: var(--ghibli-green);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-primary {
+            background-color: var(--ghibli-blue);
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: var(--ghibli-green);
+            color: var(--ghibli-brown);
+        }
+
+        @media (max-width: 768px) {
+            .strategy-selection {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-panel {
+                grid-template-columns: 1fr;
+            }
+            
+            .memory-block {
+                width: 60px;
+                flex: 0 0 60px;
+            }
+        }
+
+        .strategy-comparison {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .strategy-container {
+            background-color: var(--ghibli-yellow);
+            padding: 1.5rem;
+            border-radius: 15px;
+            width: 100%;
+        }
+
+        .strategy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .strategy-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 150px;
+        }
+
+        .strategy-stats {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .strategy-stat {
+            background-color: var(--ghibli-green);
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .strategy-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .strategy-stats {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .strategy-stat {
+                min-width: calc(50% - 0.5rem);
+            }
+        }
+
+        .comparison-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .initial-state {
+            background-color: var(--ghibli-green);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .initial-state h3 {
+            margin-bottom: 0.5rem;
+        }
+
+        .initial-state p {
+            font-size: 0.9rem;
+        }
+
+        .educational-panel {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+
+        .educational-panel h2 {
+            color: var(--ghibli-blue);
+            margin-bottom: 1rem;
+        }
+
+        .educational-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .educational-card {
+            background-color: var(--ghibli-yellow);
+            padding: 1rem;
+            border-radius: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .educational-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .educational-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--ghibli-brown);
+        }
+
+        .educational-card p {
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Memory Allocation Game</h1>
+            <p>Learn about different memory allocation strategies in operating systems</p>
+        </div>
+
+        <div class="strategy-selection">
+            <div class="strategy-card">
+                <i class="fas fa-search"></i>
+                <h3>First-Fit</h3>
+                <p>Allocates the first available block that is large enough</p>
+            </div>
+            <div class="strategy-card">
+                <i class="fas fa-arrow-right"></i>
+                <h3>Next-Fit</h3>
+                <p>Similar to First-Fit but starts from the last allocation point</p>
+            </div>
+            <div class="strategy-card">
+                <i class="fas fa-check-circle"></i>
+                <h3>Best-Fit</h3>
+                <p>Allocates the smallest block that is large enough</p>
+            </div>
+            <div class="strategy-card">
+                <i class="fas fa-times-circle"></i>
+                <h3>Worst-Fit</h3>
+                <p>Allocates the largest available block</p>
+            </div>
+        </div>
+
+        <div class="comparison-controls">
+            <div class="initial-state">
+                <h3>Initial Memory State</h3>
+                <p>Memory is pre-allocated with random processes to simulate a running operating system.</p>
+            </div>
+            <button class="btn btn-primary">Start Comparison</button>
+            <button class="btn btn-secondary">Reset</button>
+        </div>
+
+        <div class="strategy-comparison">
+            <div class="strategy-container">
+                <div class="strategy-header">
+                    <div class="strategy-title">
+                        <i class="fas fa-search"></i>
+                        <h3>First-Fit</h3>
+                    </div>
+                    <div class="strategy-stats">
+                        <div class="strategy-stat">Utilization: <span class="utilization">0%</span></div>
+                        <div class="strategy-stat">Fragmentation: <span class="fragmentation">0%</span></div>
+                        <div class="strategy-stat">Time: <span class="allocation-time">0ms</span></div>
+                        <div class="strategy-stat">Success: <span class="success-rate">0/0</span></div>
+                    </div>
+                </div>
+                <div class="memory-blocks" id="firstFitBlocks"></div>
+            </div>
+
+            <div class="strategy-container">
+                <div class="strategy-header">
+                    <div class="strategy-title">
+                        <i class="fas fa-arrow-right"></i>
+                        <h3>Next-Fit</h3>
+                    </div>
+                    <div class="strategy-stats">
+                        <div class="strategy-stat">Utilization: <span class="utilization">0%</span></div>
+                        <div class="strategy-stat">Fragmentation: <span class="fragmentation">0%</span></div>
+                        <div class="strategy-stat">Time: <span class="allocation-time">0ms</span></div>
+                        <div class="strategy-stat">Success: <span class="success-rate">0/0</span></div>
+                    </div>
+                </div>
+                <div class="memory-blocks" id="nextFitBlocks"></div>
+            </div>
+
+            <div class="strategy-container">
+                <div class="strategy-header">
+                    <div class="strategy-title">
+                        <i class="fas fa-check-circle"></i>
+                        <h3>Best-Fit</h3>
+                    </div>
+                    <div class="strategy-stats">
+                        <div class="strategy-stat">Utilization: <span class="utilization">0%</span></div>
+                        <div class="strategy-stat">Fragmentation: <span class="fragmentation">0%</span></div>
+                        <div class="strategy-stat">Time: <span class="allocation-time">0ms</span></div>
+                        <div class="strategy-stat">Success: <span class="success-rate">0/0</span></div>
+                    </div>
+                </div>
+                <div class="memory-blocks" id="bestFitBlocks"></div>
+            </div>
+
+            <div class="strategy-container">
+                <div class="strategy-header">
+                    <div class="strategy-title">
+                        <i class="fas fa-times-circle"></i>
+                        <h3>Worst-Fit</h3>
+                    </div>
+                    <div class="strategy-stats">
+                        <div class="strategy-stat">Utilization: <span class="utilization">0%</span></div>
+                        <div class="strategy-stat">Fragmentation: <span class="fragmentation">0%</span></div>
+                        <div class="strategy-stat">Time: <span class="allocation-time">0ms</span></div>
+                        <div class="strategy-stat">Success: <span class="success-rate">0/0</span></div>
+                    </div>
+                </div>
+                <div class="memory-blocks" id="worstFitBlocks"></div>
+            </div>
+        </div>
+
+        <div class="educational-panel">
+            <h2>Memory Allocation Concepts</h2>
+            <div class="educational-cards">
+                <div class="educational-card">
+                    <h3><i class="fas fa-puzzle-piece"></i> External Fragmentation</h3>
+                    <p>Occurs when free memory is split into small, non-contiguous blocks. Even if total free memory is sufficient, processes may not fit due to fragmentation. Best-Fit often leads to more external fragmentation than Worst-Fit.</p>
+                </div>
+                <div class="educational-card">
+                    <h3><i class="fas fa-clock"></i> Allocation Time</h3>
+                    <p>First-Fit is typically fastest as it takes the first suitable block. Best-Fit and Worst-Fit are slower as they must search all blocks to find the optimal fit.</p>
+                </div>
+                <div class="educational-card">
+                    <h3><i class="fas fa-chart-bar"></i> Memory Utilization</h3>
+                    <p>Best-Fit tends to have better memory utilization for small processes but can lead to unusable small fragments. Worst-Fit reduces fragmentation but may waste large blocks.</p>
+                </div>
+                <div class="educational-card">
+                    <h3><i class="fas fa-random"></i> Strategy Selection</h3>
+                    <p>The choice of strategy depends on your priorities: First-Fit for speed, Best-Fit for tight packing of small processes, Worst-Fit for reducing fragmentation, Next-Fit for balanced allocation.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="process-queue">
+            <h2>Process Queue</h2>
+            <div class="process-items" id="processQueue">
+                <!-- Process items will be dynamically generated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class MemoryAllocationGame {
+            constructor() {
+                this.totalMemory = 1024; // Total memory in KB
+                this.blockSize = 64; // Size of each block in KB
+                this.numBlocks = this.totalMemory / this.blockSize;
+                this.processQueue = [];
+                this.totalProcesses = 20; // Changed back to 20 processes
+                this.initialAllocatedBlocks = [];
+                this.strategies = {
+                    firstFit: { blocks: [], lastIndex: 0, successCount: 0, totalTime: 0 },
+                    nextFit: { blocks: [], lastIndex: 0, successCount: 0, totalTime: 0 },
+                    bestFit: { blocks: [], lastIndex: 0, successCount: 0, totalTime: 0 },
+                    worstFit: { blocks: [], lastIndex: 0, successCount: 0, totalTime: 0 }
+                };
+                
+                this.initializeGame();
+                this.setupEventListeners();
+            }
+
+            initializeGame() {
+                this.generateInitialState();
+                this.generateProcessQueue();
+                this.initializeStrategyBlocks();
+            }
+
+            generateInitialState() {
+                // Randomly allocate 30-50% of memory
+                const numBlocksToAllocate = Math.floor(this.numBlocks * (Math.random() * 0.2 + 0.3));
+                this.initialAllocatedBlocks = new Set();
+                
+                while (this.initialAllocatedBlocks.size < numBlocksToAllocate) {
+                    const blockIndex = Math.floor(Math.random() * this.numBlocks);
+                    this.initialAllocatedBlocks.add(blockIndex);
+                }
+            }
+
+            initializeStrategyBlocks() {
+                const strategies = ['firstFit', 'nextFit', 'bestFit', 'worstFit'];
+                strategies.forEach(strategy => {
+                    const container = document.getElementById(`${strategy}Blocks`);
+                    container.innerHTML = '';
+                    this.strategies[strategy].blocks = [];
+
+                    for (let i = 0; i < this.numBlocks; i++) {
+                        const block = document.createElement('div');
+                        const isAllocated = this.initialAllocatedBlocks.has(i);
+                        block.className = `memory-block ${isAllocated ? 'allocated' : 'free'}`;
+                        block.innerHTML = `
+                            <span>${this.blockSize}KB</span>
+                            <div class="block-info">
+                                Block ${i + 1}<br>
+                                Status: ${isAllocated ? 'Allocated' : 'Free'}
+                            </div>
+                        `;
+                        container.appendChild(block);
+                        this.strategies[strategy].blocks.push({
+                            element: block,
+                            size: this.blockSize,
+                            status: isAllocated ? 'allocated' : 'free',
+                            processId: isAllocated ? 'OS' : null
+                        });
+                    }
+                });
+            }
+
+            generateProcessQueue() {
+                const processItemsContainer = document.getElementById('processQueue');
+                processItemsContainer.innerHTML = '';
+                this.processQueue = [];
+
+                // Process size distributions (more realistic sizes)
+                const processSizes = [
+                    { min: 32, max: 64, probability: 0.4 },    // Small processes (40% chance)
+                    { min: 64, max: 128, probability: 0.3 },   // Medium processes (30% chance)
+                    { min: 128, max: 256, probability: 0.2 },  // Large processes (20% chance)
+                    { min: 256, max: 384, probability: 0.1 }   // Very large processes (10% chance)
+                ];
+
+                for (let i = 0; i < this.totalProcesses; i++) {
+                    const rand = Math.random();
+                    let sizeRange;
+                    let cumProb = 0;
+                    
+                    for (const size of processSizes) {
+                        cumProb += size.probability;
+                        if (rand <= cumProb) {
+                            sizeRange = size;
+                            break;
+                        }
+                    }
+
+                    const processSize = Math.floor(Math.random() * (sizeRange.max - sizeRange.min + 1)) + sizeRange.min;
+                    const process = {
+                        id: `P${i + 1}`,
+                        size: processSize,
+                        status: 'waiting'
+                    };
+                    this.processQueue.push(process);
+
+                    const processItem = document.createElement('div');
+                    processItem.className = 'process-item';
+                    processItem.innerHTML = `
+                        <div class="process-info">
+                            <span class="process-size">${process.id} (${processSize}KB)</span>
+                            <span class="process-status">Waiting for allocation</span>
+                        </div>
+                        <i class="fas fa-clock"></i>
+                    `;
+                    processItemsContainer.appendChild(processItem);
+                }
+            }
+
+            setupEventListeners() {
+                document.querySelector('.btn-primary').addEventListener('click', () => {
+                    this.startComparison();
+                });
+
+                document.querySelector('.btn-secondary').addEventListener('click', () => {
+                    this.resetGame();
+                });
+            }
+
+            async startComparison() {
+                for (const process of this.processQueue) {
+                    for (const strategy of Object.keys(this.strategies)) {
+                        const startTime = performance.now();
+                        const success = this.allocateProcess(strategy, process);
+                        const endTime = performance.now();
+                        
+                        this.strategies[strategy].totalTime += endTime - startTime;
+                        if (success) {
+                            this.strategies[strategy].successCount++;
+                        }
+                        
+                        // Update stats after each allocation
+                        this.updateStrategyStats(strategy);
+                    }
+                    // Add delay between processes for visualization
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+
+            allocateProcess(strategy, process) {
+                const requiredBlocks = Math.ceil(process.size / this.blockSize);
+                let startIndex = -1;
+
+                switch (strategy) {
+                    case 'firstFit':
+                        startIndex = this.findFirstFit(strategy, requiredBlocks);
+                        break;
+                    case 'nextFit':
+                        startIndex = this.findNextFit(strategy, requiredBlocks);
+                        break;
+                    case 'bestFit':
+                        startIndex = this.findBestFit(strategy, requiredBlocks);
+                        break;
+                    case 'worstFit':
+                        startIndex = this.findWorstFit(strategy, requiredBlocks);
+                        break;
+                }
+
+                if (startIndex !== -1) {
+                    this.allocateBlocks(strategy, startIndex, requiredBlocks, process);
+                    return true;
+                }
+                return false;
+            }
+
+            findFirstFit(strategy, requiredBlocks) {
+                let consecutiveFree = 0;
+                for (let i = 0; i < this.strategies[strategy].blocks.length; i++) {
+                    if (this.strategies[strategy].blocks[i].status === 'free') {
+                        consecutiveFree++;
+                        if (consecutiveFree === requiredBlocks) {
+                            return i - requiredBlocks + 1;
+                        }
+                    } else {
+                        consecutiveFree = 0;
+                    }
+                }
+                return -1;
+            }
+
+            findNextFit(strategy, requiredBlocks) {
+                let consecutiveFree = 0;
+                const startIndex = this.strategies[strategy].lastIndex;
+                
+                for (let i = startIndex; i < this.strategies[strategy].blocks.length; i++) {
+                    if (this.strategies[strategy].blocks[i].status === 'free') {
+                        consecutiveFree++;
+                        if (consecutiveFree === requiredBlocks) {
+                            this.strategies[strategy].lastIndex = i;
+                            return i - requiredBlocks + 1;
+                        }
+                    } else {
+                        consecutiveFree = 0;
+                    }
+                }
+                return this.findFirstFit(strategy, requiredBlocks);
+            }
+
+            findBestFit(strategy, requiredBlocks) {
+                let bestStart = -1;
+                let bestSize = Infinity;
+                let currentStart = -1;
+                let currentSize = 0;
+
+                for (let i = 0; i < this.strategies[strategy].blocks.length; i++) {
+                    if (this.strategies[strategy].blocks[i].status === 'free') {
+                        if (currentStart === -1) currentStart = i;
+                        currentSize++;
+                    } else {
+                        if (currentSize >= requiredBlocks && currentSize < bestSize) {
+                            bestStart = currentStart;
+                            bestSize = currentSize;
+                        }
+                        currentStart = -1;
+                        currentSize = 0;
+                    }
+                }
+
+                if (currentSize >= requiredBlocks && currentSize < bestSize) {
+                    bestStart = currentStart;
+                }
+
+                return bestStart;
+            }
+
+            findWorstFit(strategy, requiredBlocks) {
+                let worstStart = -1;
+                let worstSize = 0;
+                let currentStart = -1;
+                let currentSize = 0;
+
+                for (let i = 0; i < this.strategies[strategy].blocks.length; i++) {
+                    if (this.strategies[strategy].blocks[i].status === 'free') {
+                        if (currentStart === -1) currentStart = i;
+                        currentSize++;
+                    } else {
+                        if (currentSize >= requiredBlocks && currentSize > worstSize) {
+                            worstStart = currentStart;
+                            worstSize = currentSize;
+                        }
+                        currentStart = -1;
+                        currentSize = 0;
+                    }
+                }
+
+                if (currentSize >= requiredBlocks && currentSize > worstSize) {
+                    worstStart = currentStart;
+                }
+
+                return worstStart;
+            }
+
+            allocateBlocks(strategy, startIndex, numBlocks, process) {
+                for (let i = startIndex; i < startIndex + numBlocks; i++) {
+                    this.strategies[strategy].blocks[i].status = 'allocated';
+                    this.strategies[strategy].blocks[i].processId = process.id;
+                    this.strategies[strategy].blocks[i].element.className = 'memory-block allocated';
+                    this.strategies[strategy].blocks[i].element.querySelector('.block-info').innerHTML = `
+                        Block ${i + 1}<br>
+                        Status: Allocated<br>
+                        Process: ${process.id}
+                    `;
+                }
+            }
+
+            updateStrategyStats(strategy) {
+                const container = document.querySelector(`#${strategy}Blocks`).closest('.strategy-container');
+                const utilization = this.calculateUtilization(strategy);
+                const fragmentation = this.calculateFragmentation(strategy);
+                const successRate = `${this.strategies[strategy].successCount}/${this.processQueue.length}`;
+                const avgTime = (this.strategies[strategy].totalTime / (this.processQueue.length || 1)).toFixed(2);
+                
+                container.querySelector('.utilization').textContent = `${utilization.toFixed(1)}%`;
+                container.querySelector('.fragmentation').textContent = `${fragmentation.toFixed(1)}%`;
+                container.querySelector('.allocation-time').textContent = `${avgTime}ms`;
+                container.querySelector('.success-rate').textContent = successRate;
+            }
+
+            calculateUtilization(strategy) {
+                const allocatedBlocks = this.strategies[strategy].blocks.filter(block => block.status === 'allocated').length;
+                return (allocatedBlocks / this.numBlocks) * 100;
+            }
+
+            calculateFragmentation(strategy) {
+                let freeBlocks = 0;
+                let freeChunks = 0;
+                let inFreeChunk = false;
+
+                for (const block of this.strategies[strategy].blocks) {
+                    if (block.status === 'free') {
+                        freeBlocks++;
+                        if (!inFreeChunk) {
+                            freeChunks++;
+                            inFreeChunk = true;
+                        }
+                    } else {
+                        inFreeChunk = false;
+                    }
+                }
+
+                if (freeBlocks === 0) return 0;
+                return ((freeChunks - 1) / freeBlocks) * 100;
+            }
+
+            resetGame() {
+               // Reset strategy statistics
+    for (const strategy of Object.keys(this.strategies)) {
+        this.strategies[strategy].successCount = 0;
+        this.strategies[strategy].totalTime = 0;
+        this.strategies[strategy].lastIndex = 0;
+    }
+    
+    // Reset UI statistics
+    const strategies = ['firstFit', 'nextFit', 'bestFit', 'worstFit'];
+    strategies.forEach(strategy => {
+        const container = document.querySelector(`#${strategy}Blocks`).closest('.strategy-container');
+        container.querySelector('.utilization').textContent = '0%';
+        container.querySelector('.fragmentation').textContent = '0%';
+        container.querySelector('.allocation-time').textContent = '0ms';
+        container.querySelector('.success-rate').textContent = '0/0';
+    });
+    
+    // Reset memory blocks and process queue
+    this.initializeGame();
+            }
+        }
+
+        window.addEventListener('load', () => {
+            new MemoryAllocationGame();
+        });
+    </script>
+</body>
+</html>
