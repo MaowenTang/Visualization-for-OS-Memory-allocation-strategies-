@@ -42,6 +42,9 @@ This simulator visualizes four common memory allocation strategies:
 
 ## Technical Implementation
 
+1. index1.html: no process end during the new process coming
+2. index2.html: some processes would end and release memory when new processes coming 
+
 ### Core Components
 
 1. **Memory Manager Class**
