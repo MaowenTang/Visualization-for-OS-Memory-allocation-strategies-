@@ -164,7 +164,7 @@ This simulator visualizes four common memory allocation strategies:
 
 ## License
 
-MIT License - Feel free to use and modify for educational purposes.
+Feel free to use and modify for educational purposes.
 
 ## Credits
 
