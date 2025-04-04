@@ -1,4 +1,4 @@
-# Memory Allocation Strategy Game
+# Visualization for Operating System Memory Allocation Strategy 
 
 This is an educational mini-game designed to help students better understand **operating system memory allocation strategies**:  
 - First-Fit  
@@ -6,7 +6,7 @@ This is an educational mini-game designed to help students better understand **o
 - Best-Fit  
 - Worst-Fit  
 
-## 🎮 Game Description
+## 🎮 Description
 
 Players begin by selecting one of the four memory allocation strategies.  
 The game will simulate 20 predefined processes with various memory requirements (both large and small).  
