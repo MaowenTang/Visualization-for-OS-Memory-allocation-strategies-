@@ -1,4 +1,4 @@
-# OS Memory Allocation Strategy Simulator
+# OS Memory Allocation Strategy Simulator - for COMP-5313
 
 An interactive web-based simulator that demonstrates different memory allocation strategies in operating systems. This educational tool helps students understand how various memory allocation algorithms work and their impact on system performance.
 
