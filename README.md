@@ -168,4 +168,4 @@ Feel free to use and modify for educational purposes.
 
 ## Credits
 
-Designed and implemented as an educational tool for operating systems courses.
+Designed and implemented as an visualization tool for operating systems courses.
