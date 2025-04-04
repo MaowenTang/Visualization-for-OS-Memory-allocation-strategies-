@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OS Memory Allocation Simulator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            /* Ghibli-inspired color palette */
+            --totoro-gray: #7C9B9B;        /* Totoro's fur */
+            --forest-green: #8CB6A2;       /* Forest background */
+            --sakura-pink: #EFB9CB;        /* Sakura petals */
+            --dust-spirit: #2D334A;        /* Spirited Away dust spirits */
+            --ponyo-blue: #65A7C5;         /* Ocean colors */
+            --calcifer-orange: #FF8B3D;    /* Howl's Moving Castle - Calcifer */
+            --kiki-purple: #9B8BB4;        /* Kiki's dress */
+            --cream: #FFF7E8;              /* Soft background */
+            
+            /* Functional color assignments */
+            --primary-bg: var(--cream);
+            --block-free: var(--forest-green);
+            --block-allocated: var(--sakura-pink);
+            --text-primary: var(--dust-spirit);
+            --accent: var(--ponyo-blue);
+            --hover: var(--calcifer-orange);
+            --panel-bg: rgba(255, 255, 255, 0.9);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--primary-bg);
+            background-image: linear-gradient(
+                120deg,
+                var(--forest-green) 0%,
+                var(--cream) 100%
+            );
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--dust-spirit);
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .memory-info {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--panel-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .memory-legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .memory-legend span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .strategies-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .strategy-panel {
+            border: none;
+            border-radius: 15px;
+            padding: 20px;
+            background: var(--panel-bg);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+
+        .strategy-panel:hover {
+            transform: translateY(-5px);
+        }
+
+        .strategy-panel.stopped {
+            opacity: 0.8;
+        }
+
+        .strategy-panel h2 {
+            color: var(--dust-spirit);
+            margin-top: 0;
+            font-size: 1.5em;
+            border-bottom: 2px solid var(--forest-green);
+            padding-bottom: 10px;
+        }
+
+        .memory-blocks {
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            gap: 4px;
+            margin: 15px 0;
+        }
+
+        .memory-block {
+            aspect-ratio: 1;
+            background: var(--block-free);
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .memory-block.allocated {
+            background: var(--block-allocated);
+        }
+
+        .memory-block:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            font-size: 0.9em;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+        }
+
+        .stats div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+        }
+
+        .process-queue {
+            margin-top: 30px;
+            padding: 25px;
+            background: var(--panel-bg);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+        }
+
+        .processes {
+            display: flex;
+            gap: 12px;
+            padding: 15px 5px;
+            flex-wrap: wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            align-content: flex-start;
+        }
+
+        .process {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            background: var(--accent);
+            border-radius: 10px;
+            min-width: 80px;
+            text-align: center;
+            color: white;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 8px;
+        }
+
+        .process:hover {
+            transform: translateY(-2px);
+            background: var(--hover);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .process.dimmed {
+            opacity: 0.5;
+            background: var(--totoro-gray);
+        }
+
+        .process .size-category {
+            font-size: 0.8em;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 25px 0;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: var(--accent);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: var(--hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .tooltip {
+            position: absolute;
+            background: var(--dust-spirit);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8em;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .memory-block:hover .tooltip {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .controls label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .controls input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--accent);
+            border-radius: 5px;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .controls input[type="checkbox"]:checked {
+            background: var(--accent);
+        }
+
+        .controls input[type="checkbox"]:checked::before {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 14px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .processes::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .processes::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 4px;
+        }
+
+        .processes::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 4px;
+        }
+
+        .processes::-webkit-scrollbar-thumb:hover {
+            background: var(--hover);
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.5);
+            font-size: 0.9em;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        /* Status colors */
+        .status.success {
+            color: #388e3c;
+            background: rgba(56, 142, 60, 0.1);
+        }
+
+        .status.stopped {
+            color: #d32f2f;
+            background: rgba(211, 47, 47, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 1200px) {
+            .memory-blocks {
+                grid-template-columns: repeat(16, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .strategies-grid {
+                grid-template-columns: 1fr;
+            }
+            .memory-blocks {
+                grid-template-columns: repeat(10, 1fr);
+            }
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        .queue-progress {
+            padding: 10px;
+            background: var(--panel-bg);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .process-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        #cycleCounter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--panel-bg);
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-weight: bold;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-memory"></i> OS Memory Allocation Simulator</h1>
+        
+        <div class="memory-info">
+            Total Memory: 10MB (160 blocks × 64KB)
+            <div class="memory-legend">
+                <span class="free-block"><i class="fas fa-square"></i> Free</span>
+                <span class="allocated-block"><i class="fas fa-square"></i> Allocated</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="startBtn"><i class="fas fa-play"></i> Start Comparison</button>
+            <button id="resetBtn"><i class="fas fa-redo"></i> Reset Simulation</button>
+            <label>
+                <input type="checkbox" id="stepMode"> Step-by-step Mode
+            </label>
+        </div>
+
+        <div class="strategies-grid">
+            <div class="strategy-panel" id="firstFit">
+                <h2>First-Fit</h2>
+                <div class="memory-blocks"></div>
+                <div class="stats">
+                    <div>Utilization: <span class="utilization">0%</span></div>
+                    <div>Fragmentation: <span class="fragmentation">0%</span></div>
+                    <div>Avg Time: <span class="avg-time">0ms</span></div>
+                    <div>Success: <span class="success-rate">0/0</span></div>
+                </div>
+                <div class="status"></div>
+            </div>
+
+            <div class="strategy-panel" id="nextFit">
+                <h2>Next-Fit</h2>
+                <div class="memory-blocks"></div>
+                <div class="stats">
+                    <div>Utilization: <span class="utilization">0%</span></div>
+                    <div>Fragmentation: <span class="fragmentation">0%</span></div>
+                    <div>Avg Time: <span class="avg-time">0ms</span></div>
+                    <div>Success: <span class="success-rate">0/0</span></div>
+                </div>
+                <div class="status"></div>
+            </div>
+
+            <div class="strategy-panel" id="bestFit">
+                <h2>Best-Fit</h2>
+                <div class="memory-blocks"></div>
+                <div class="stats">
+                    <div>Utilization: <span class="utilization">0%</span></div>
+                    <div>Fragmentation: <span class="fragmentation">0%</span></div>
+                    <div>Avg Time: <span class="avg-time">0ms</span></div>
+                    <div>Success: <span class="success-rate">0/0</span></div>
+                </div>
+                <div class="status"></div>
+            </div>
+
+            <div class="strategy-panel" id="worstFit">
+                <h2>Worst-Fit</h2>
+                <div class="memory-blocks"></div>
+                <div class="stats">
+                    <div>Utilization: <span class="utilization">0%</span></div>
+                    <div>Fragmentation: <span class="fragmentation">0%</span></div>
+                    <div>Avg Time: <span class="avg-time">0ms</span></div>
+                    <div>Success: <span class="success-rate">0/0</span></div>
+                </div>
+                <div class="status"></div>
+            </div>
+        </div>
+
+        <div class="process-queue">
+            <h2>Process Queue</h2>
+            <div class="processes" id="processQueue"></div>
+        </div>
+    </div>
+
+    <div id="cycleCounter">Cycle: 0</div>
+
+    <script>
+        class MemoryBlock {
+            constructor(size = 64) {
+                this.size = size;
+                this.allocated = false;
+                this.process = null;
+            }
+        }
+
+        class Process {
+            constructor(id, size) {
+                this.id = id;
+                this.size = size;
+                this.status = "waiting";
+            }
+
+            toString() {
+                return `P${this.id} (${this.size}KB)`;
+            }
+        }
+
+        class MemoryManager {
+            constructor(strategy) {
+                this.strategy = strategy;
+                this.memory = Array(160).fill().map(() => new MemoryBlock()); // 160 blocks of 64KB each
+                this.lastAllocationIndex = 0;
+                this.stats = {
+                    utilization: 0,
+                    fragmentation: 0,
+                    avgTime: 0,
+                    successCount: 0,
+                    totalAttempts: 0,
+                    status: ''
+                };
+                this.allocationTimes = [];
+            }
+
+            reset() {
+                this.memory = Array(160).fill().map(() => new MemoryBlock());
+                this.lastAllocationIndex = 0;
+                this.stats = {
+                    utilization: 0,
+                    fragmentation: 0,
+                    avgTime: 0,
+                    successCount: 0,
+                    totalAttempts: 0,
+                    status: ''
+                };
+                this.allocationTimes = [];
+            }
+
+            preAllocate(percentage) {
+                const blocksToAllocate = Math.floor(160 * (percentage / 100));
+                const indices = Array.from({length: 160}, (_, i) => i);
+                
+                for (let i = indices.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [indices[i], indices[j]] = [indices[j], indices[i]];
+                }
+
+                for (let i = 0; i < blocksToAllocate; i++) {
+                    const block = this.memory[indices[i]];
+                    block.allocated = true;
+                    block.process = new Process('OS', 64);
+                }
+            }
+
+            findFirstFit(processSize) {
+                const blocksNeeded = Math.ceil(processSize / 64);
+                for (let i = 0; i < this.memory.length - blocksNeeded + 1; i++) {
+                    let canFit = true;
+                    for (let j = 0; j < blocksNeeded; j++) {
+                        if (this.memory[i + j].allocated) {
+                            canFit = false;
+                            break;
+                        }
+                    }
+                    if (canFit) return i;
+                }
+                return -1;
+            }
+
+            findNextFit(processSize) {
+                const blocksNeeded = Math.ceil(processSize / 64);
+                const startIndex = this.lastAllocationIndex;
+                
+                // Search from last allocation to end
+                for (let i = startIndex; i < this.memory.length - blocksNeeded + 1; i++) {
+                    let canFit = true;
+                    for (let j = 0; j < blocksNeeded; j++) {
+                        if (this.memory[i + j].allocated) {
+                            canFit = false;
+                            break;
+                        }
+                    }
+                    if (canFit) {
+                        this.lastAllocationIndex = i + blocksNeeded;
+                        return i;
+                    }
+                }
+
+                // Search from beginning to start
+                for (let i = 0; i < startIndex && i < this.memory.length - blocksNeeded + 1; i++) {
+                    let canFit = true;
+                    for (let j = 0; j < blocksNeeded; j++) {
+                        if (this.memory[i + j].allocated) {
+                            canFit = false;
+                            break;
+                        }
+                    }
+                    if (canFit) {
+                        this.lastAllocationIndex = i + blocksNeeded;
+                        return i;
+                    }
+                }
+
+                return -1;
+            }
+
+            findBestFit(processSize) {
+                const blocksNeeded = Math.ceil(processSize / 64);
+                let bestFitIndex = -1;
+                let bestFitSize = Infinity;
+
+                for (let i = 0; i < this.memory.length - blocksNeeded + 1; i++) {
+                    let currentHoleSize = 0;
+                    let j = i;
+                    while (j < this.memory.length && !this.memory[j].allocated) {
+                        currentHoleSize++;
+                        j++;
+                    }
+
+                    if (currentHoleSize >= blocksNeeded && currentHoleSize < bestFitSize) {
+                        bestFitSize = currentHoleSize;
+                        bestFitIndex = i;
+                    }
+                }
+
+                return bestFitIndex;
+            }
+
+            findWorstFit(processSize) {
+                const blocksNeeded = Math.ceil(processSize / 64);
+                let worstFitIndex = -1;
+                let worstFitSize = 0;
+
+                for (let i = 0; i < this.memory.length - blocksNeeded + 1; i++) {
+                    let currentHoleSize = 0;
+                    let j = i;
+                    while (j < this.memory.length && !this.memory[j].allocated) {
+                        currentHoleSize++;
+                        j++;
+                    }
+
+                    if (currentHoleSize >= blocksNeeded && currentHoleSize > worstFitSize) {
+                        worstFitSize = currentHoleSize;
+                        worstFitIndex = i;
+                    }
+                }
+
+                return worstFitIndex;
+            }
+
+            allocate(process) {
+                const startTime = performance.now();
+                let startIndex = -1;
+
+                switch (this.strategy) {
+                    case 'firstFit':
+                        startIndex = this.findFirstFit(process.size);
+                        break;
+                    case 'nextFit':
+                        startIndex = this.findNextFit(process.size);
+                        break;
+                    case 'bestFit':
+                        startIndex = this.findBestFit(process.size);
+                        break;
+                    case 'worstFit':
+                        startIndex = this.findWorstFit(process.size);
+                        break;
+                }
+
+                const endTime = performance.now();
+                this.allocationTimes.push(endTime - startTime);
+                this.stats.totalAttempts++;
+
+                if (startIndex === -1) {
+                    this.stats.status = `Stopped: Not enough memory for P${process.id} (${process.size}KB)`;
+                    return false;
+                }
+
+                const blocksNeeded = Math.ceil(process.size / 64);
+                for (let i = 0; i < blocksNeeded; i++) {
+                    this.memory[startIndex + i].allocated = true;
+                    this.memory[startIndex + i].process = process;
+                }
+
+                this.stats.successCount++;
+                this.updateStats();
+                return true;
+            }
+
+            updateStats() {
+                const usedBlocks = this.memory.filter(block => block.allocated).length;
+                this.stats.utilization = (usedBlocks / 160) * 100;
+
+                let fragmentedBlocks = 0;
+                let inHole = false;
+                for (let i = 0; i < this.memory.length; i++) {
+                    if (!this.memory[i].allocated) {
+                        if (!inHole) {
+                            fragmentedBlocks++;
+                            inHole = true;
+                        }
+                    } else {
+                        inHole = false;
+                    }
+                }
+                this.stats.fragmentation = (fragmentedBlocks / 160) * 100;
+
+                this.stats.avgTime = this.allocationTimes.reduce((a, b) => a + b, 0) / this.allocationTimes.length;
+            }
+        }
+
+        class Simulator {
+            constructor() {
+                this.managers = {
+                    firstFit: new MemoryManager('firstFit'),
+                    nextFit: new MemoryManager('nextFit'),
+                    bestFit: new MemoryManager('bestFit'),
+                    worstFit: new MemoryManager('worstFit')
+                };
+                this.processes = [];
+                this.isRunning = false;
+                this.stepMode = false;
+                this.currentProcessIndex = 0;
+                this.completionProbability = 0.15; // 15% chance of process completion each cycle
+                this.cycleCount = 0;
+                
+                this.initializeUI();
+                this.generateProcesses();
+                this.preAllocateMemory();
+                this.renderAll();
+            }
+
+            initializeUI() {
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('stepMode').addEventListener('change', (e) => {
+                    this.stepMode = e.target.checked;
+                });
+            }
+
+            generateProcessSize(category) {
+                switch(category) {
+                    case 'small':
+                        return Math.floor(Math.random() * (75 - 45) + 45);
+                    case 'medium':
+                        return Math.floor(Math.random() * (110 - 76) + 76);
+                    case 'large':
+                        return Math.floor(Math.random() * (150 - 111) + 111);
+                    case 'very_large':
+                        return Math.floor(Math.random() * (200 - 151) + 151);
+                    default:
+                        return 45;
+                }
+            }
+
+            generateProcesses() {
+                // Create array of process categories based on distribution (200 processes)
+                const processCategories = [
+                    ...Array(80).fill('small'),     // 40% - 80 processes
+                    ...Array(60).fill('medium'),    // 30% - 60 processes
+                    ...Array(40).fill('large'),     // 20% - 40 processes
+                    ...Array(20).fill('very_large') // 10% - 20 processes
+                ];
+
+                // Shuffle and generate processes as before
+                for (let i = processCategories.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [processCategories[i], processCategories[j]] = [processCategories[j], processCategories[i]];
+                }
+
+                this.processes = processCategories.map((category, index) => {
+                    const size = this.generateProcessSize(category);
+                    return new Process(index + 1, size);
+                });
+
+                this.processes.sort((a, b) => a.id - b.id);
+            }
+
+            preAllocateMemory() {
+                const percentage = Math.floor(Math.random() * (50 - 30 + 1) + 30);
+                Object.values(this.managers).forEach(manager => {
+                    manager.preAllocate(percentage);
+                });
+            }
+
+            renderMemoryBlocks(manager, containerId) {
+                const container = document.querySelector(`#${containerId} .memory-blocks`);
+                container.innerHTML = '';
+
+                manager.memory.forEach((block, index) => {
+                    const blockElement = document.createElement('div');
+                    blockElement.className = `memory-block ${block.allocated ? 'allocated' : ''}`;
+                    
+                    if (block.allocated && block.process) {
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'tooltip';
+                        tooltip.textContent = `Block ${index}\nStatus: Allocated\nProcess: P${block.process.id}`;
+                        blockElement.appendChild(tooltip);
+                    }
+
+                    container.appendChild(blockElement);
+                });
+            }
+
+            simulateProcessCompletion(manager) {
+                const allocatedBlocks = manager.memory.reduce((blocks, block, index) => {
+                    if (block.allocated && block.process && block.process.id !== 'OS') {
+                        const lastBlock = blocks.length > 0 ? blocks[blocks.length - 1] : null;
+                        if (lastBlock && lastBlock.processId === block.process.id) {
+                            lastBlock.blocks.push(index);
+                        } else {
+                            blocks.push({
+                                processId: block.process.id,
+                                blocks: [index]
+                            });
+                        }
+                    }
+                    return blocks;
+                }, []);
+
+                // Randomly complete processes
+                allocatedBlocks.forEach(process => {
+                    if (Math.random() < this.completionProbability) {
+                        process.blocks.forEach(blockIndex => {
+                            manager.memory[blockIndex].allocated = false;
+                            manager.memory[blockIndex].process = null;
+                        });
+                    }
+                });
+            }
+
+            renderProcessQueue() {
+                const container = document.getElementById('processQueue');
+                container.innerHTML = '';
+
+                // Show progress information
+                const progressInfo = document.createElement('div');
+                progressInfo.className = 'queue-progress';
+                progressInfo.textContent = `Progress: ${this.currentProcessIndex}/${this.processes.length} processes`;
+                container.appendChild(progressInfo);
+
+                // Create a scrollable container for processes
+                const processContainer = document.createElement('div');
+                processContainer.className = 'process-container';
+
+                this.processes.forEach((process, index) => {
+                    const processElement = document.createElement('div');
+                    processElement.className = `process ${index < this.currentProcessIndex ? 'dimmed' : ''}`;
+                    
+                    let sizeCategory = '';
+                    if (process.size <= 75) sizeCategory = 'Small';
+                    else if (process.size <= 110) sizeCategory = 'Medium';
+                    else if (process.size <= 150) sizeCategory = 'Large';
+                    else sizeCategory = 'Very Large';
+
+                    processElement.innerHTML = `
+                        <div>P${process.id}</div>
+                        <div>${process.size}KB</div>
+                        <div class="size-category">${sizeCategory}</div>
+                    `;
+                    
+                    processElement.title = `Process ${process.id}
+Size: ${process.size}KB
+Category: ${sizeCategory}
+Status: ${process.status}`;
+
+                    processContainer.appendChild(processElement);
+                });
+
+                container.appendChild(processContainer);
+            }
+
+            renderStats(manager, containerId) {
+                const panel = document.querySelector(`#${containerId}`);
+                panel.querySelector('.utilization').textContent = `${manager.stats.utilization.toFixed(1)}%`;
+                panel.querySelector('.fragmentation').textContent = `${manager.stats.fragmentation.toFixed(1)}%`;
+                panel.querySelector('.avg-time').textContent = `${manager.stats.avgTime.toFixed(2)}ms`;
+                panel.querySelector('.success-rate').textContent = `${manager.stats.successCount}/${manager.stats.totalAttempts}`;
+                
+                const statusElement = panel.querySelector('.status');
+                statusElement.textContent = manager.stats.status;
+                
+                // Add color coding for status
+                if (manager.stats.status.includes('Stopped')) {
+                    statusElement.style.color = '#d32f2f'; // Red for stopped
+                } else if (manager.stats.status === 'Completed successfully') {
+                    statusElement.style.color = '#388e3c'; // Green for success
+                } else {
+                    statusElement.style.color = 'inherit'; // Default color
+                }
+            }
+
+            renderAll() {
+                Object.entries(this.managers).forEach(([id, manager]) => {
+                    this.renderMemoryBlocks(manager, id);
+                    this.renderStats(manager, id);
+                });
+                this.renderProcessQueue();
+            }
+
+            async start() {
+                if (this.isRunning) return;
+                this.isRunning = true;
+                
+                // Track active strategies
+                const activeStrategies = {
+                    firstFit: true,
+                    nextFit: true,
+                    bestFit: true,
+                    worstFit: true
+                };
+
+                while (this.currentProcessIndex < this.processes.length && this.isRunning) {
+                    const process = this.processes[this.currentProcessIndex];
+                    let allStrategiesFailed = true;
+
+                    // Try to allocate the process to each active strategy
+                    for (const [strategyName, manager] of Object.entries(this.managers)) {
+                        if (activeStrategies[strategyName]) {
+                            if (!manager.allocate(process)) {
+                                // Mark this strategy as inactive
+                                activeStrategies[strategyName] = false;
+                                manager.stats.status = `Stopped: Not enough memory for P${process.id} (${process.size}KB)`;
+                            } else {
+                                allStrategiesFailed = false;
+                            }
+                        }
+                    }
+
+                    this.renderAll();
+
+                    // Check if any strategies are still active
+                    const anyStrategyActive = Object.values(activeStrategies).some(active => active);
+                    if (!anyStrategyActive) {
+                        this.isRunning = false;
+                        break;
+                    }
+
+                    this.currentProcessIndex++;
+
+                    if (this.stepMode) {
+                        await new Promise(resolve => {
+                            const handler = () => {
+                                document.getElementById('startBtn').removeEventListener('click', handler);
+                                resolve();
+                            };
+                            document.getElementById('startBtn').addEventListener('click', handler);
+                        });
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+
+                // Update final status for successful strategies
+                for (const [strategyName, manager] of Object.entries(this.managers)) {
+                    if (activeStrategies[strategyName]) {
+                        manager.stats.status = 'Completed successfully';
+                    }
+                }
+                this.renderAll();
+            }
+
+            reset() {
+                this.isRunning = false;
+                this.currentProcessIndex = 0;
+                Object.values(this.managers).forEach(manager => manager.reset());
+                this.generateProcesses();
+                this.preAllocateMemory();
+                this.renderAll();
+            }
+        }
+
+        // Start the simulation when the page loads
+        window.addEventListener('load', () => {
+            window.simulator = new Simulator();
+        });
+    </script>
+</body>
+</html>
